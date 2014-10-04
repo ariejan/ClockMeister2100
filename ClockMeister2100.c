@@ -11,12 +11,32 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <util/delay.h>
-#include "lcd.h"
 
-void render_temperature() {
-	lcd_clear();
+#include "lcd.h"
+#include "i2c.h"
+#include "ds1307.h"
+
+void render_time() {
 	lcd_setcursor(0, 0);
-	lcd_string("CM-2100");
+		
+	char val[8]= "        ";
+	uint8_t data;
+	
+	DS1307Read(0x01,&data);
+	
+	val[4]=48+(data & 0b00001111);
+	val[3]=48+((data & 0b01110000)>>4);
+	val[2]=':';
+	
+	DS1307Read(0x02,&data);
+	
+	val[1]=48+(data & 0b00001111);
+	val[0]=48+((data & 0b00010000)>>4);
+	
+	lcd_string(val);
+	lcd_string("   ");
+}
+void render_temperature() {
 	lcd_setcursor(0, 1);
 			
 	// Take a reading.
@@ -49,6 +69,9 @@ void render_temperature() {
 
 int main(void)
 {
+	// Setup I2C
+	I2CInit();
+
 	// Initialize LCD
 	lcd_init();
 	
@@ -71,6 +94,8 @@ int main(void)
 
 	ADCSRA |= (1 << ADEN);  // Enable ADC	
 	
+	lcd_clear();
+	
 	while(1)
     {
 		if ((~PINC & 0x02)) { // Hour set
@@ -82,6 +107,7 @@ int main(void)
 			lcd_setcursor(0, 0);
 			lcd_string(">> MIN");
 		} else {
+			render_time();
 			render_temperature();
 		}
 		_delay_ms(200);

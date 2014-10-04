@@ -111,6 +111,18 @@
     <Compile Include="ClockMeister2100.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ds1307.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ds1307.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="i2c.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="i2c.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="lcd.c">
       <SubType>compile</SubType>
     </Compile>
