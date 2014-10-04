@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <util/delay.h>
-#include "lcd-routines.h"
+#include "lcd.h"
 
 void render_temperature() {
 	lcd_clear();

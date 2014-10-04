@@ -2,8 +2,8 @@
 // http://www.mikrocontroller.net/articles/AVR-GCC-Tutorial/LCD-Ansteuerung
 //
 
-#ifndef LCD_ROUTINES_H
-#define LCD_ROUTINES_H
+#ifndef LCD_H
+#define LCD_H
 
 ////////////////////////////////////////////////////////////////////////////////
 // Hier die verwendete Taktfrequenz in Hz eintragen, wichtig!
