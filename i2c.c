@@ -9,13 +9,10 @@ COPYRIGHT (C) 2008-2009 EXTREME ELECTRONICS INDIA
 
 ****************************************************/
 
-#ifndef F_CPU
-#define F_CPU 16000000
-#endif
 
+#include "config.h"
 #include <avr/io.h>
 #include <util/delay.h>
-
 #include "I2C.h"
 
 

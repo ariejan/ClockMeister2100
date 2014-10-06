@@ -1,24 +1,5 @@
-/************************************************************
-
-Libray fuctions to access the popular DS1307 RTC IC with AVR
-Microcontroller.
-
-The libray has just two functions. One reads the register whose
-address is provided. Other writes to the given register with
-given data.Please see DS1307 Datasheet for more info on
-the registers.
-
-Requires eXtreme Electronics Low Level I2C Libray.
-
-PLEASE SEE WWW.EXTREMEELECTRONICS.CO.IN FOR DETAILED
-SCHEMATICS,USER GUIDE AND VIDOES.
-
-COPYRIGHT (C) 2008-2009 EXTREME ELECTRONICS INDIA
-
-************************************************************/
-
+#include "config.h"
 #include <avr/io.h>
-
 #include "i2c.h"
 #include "ds1307.h"
 

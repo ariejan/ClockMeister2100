@@ -5,9 +5,10 @@
  *  Author: Ariejan
  */ 
 
-#define F_CPU 16000000UL // 16 Mhz
+#include "config.h"
 
 #include <avr/io.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <util/delay.h>
@@ -16,85 +17,134 @@
 #include "i2c.h"
 #include "ds1307.h"
 
-void render_time() {
-	lcd_setcursor(0, 0);
-		
-	char val[8]= "        ";
-	uint8_t data;
-	
-	DS1307Read(0x01,&data);
-	
-	val[4]=48+(data & 0b00001111);
-	val[3]=48+((data & 0b01110000)>>4);
-	val[2]=':';
-	
-	DS1307Read(0x02,&data);
-	
-	val[1]=48+(data & 0b00001111);
-	val[0]=48+((data & 0b00010000)>>4);
-	
-	lcd_string(val);
-	lcd_string("   ");
+// Initialize I2C
+void setup_i2c() {
+	I2CInit();
 }
-void render_temperature() {
+
+// Initialize LCD for use
+void setup_lcd() {
+	// Initialize LCD
+	lcd_init();
+
+	lcd_clear();
+	lcd_setcursor(0, 0);
+	lcd_string("  ClockM");
 	lcd_setcursor(0, 1);
-			
-	// Take a reading.
+	lcd_string("eister");	
+}
+
+// Setup buttons
+void setup_buttons() {
+	// Set C pint as input.
+	DDRC = 0x00; // Set as input
+	
+	// Enable internal pull-ups on C1 and C2
+	PORTC = 0b00000110;	
+}
+
+// Setup analog input
+void setup_analog() {
+	// Set pre-scaler to 128, 127kHz at 16Mhz
+	ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+	
+	// Use AVcc as reference voltage
+	ADMUX |= (1 << REFS0);
+	
+	// Right adjust ADC results for full 10-bit reading
+	ADMUX |= (0 << ADLAR);
+
+	// No MUX values needed to be changed to use ADC0
+
+	// Enable ADC
+	ADCSRA |= (1 << ADEN);	
+}
+
+// Runs once on power-on
+void setup() {
+	setup_i2c();
+	setup_lcd();
+	setup_buttons();
+	setup_analog();
+	_delay_ms(SETUP_DELAY_MS);
+}
+
+int bcd_to_dec(int val) {
+	return ((val/16*10) + (val%16));
+}
+
+int dec_to_bcd(int val) {
+	return ((val/10*16) + (val%10));
+}
+
+int read_from_ds1307(uint8_t address) {
+	uint8_t data;
+	DS1307Read(address, &data);
+	return data;
+}
+
+int read_hour() {
+	uint8_t data = read_from_ds1307(0x02);
+	return bcd_to_dec(data);
+}
+
+int read_minute() {
+	uint8_t data = read_from_ds1307(0x01);
+	return bcd_to_dec(data);	
+}
+
+void render_time() {
+	char output[8];
+	int hour = read_hour();
+	int minute = read_minute();
+	
+	sprintf(output, " %02d:%02d  ", hour, minute);
+	
+	lcd_setcursor(0, 0);
+	lcd_string(output);
+}
+
+// Take a 10-bit analog reading and
+// return the resulting temperature in tenth's of degree C.
+// E.g. 250 => 25.0 C
+int read_temperature() {
+	// Take a 10-bit analog reading.
 	ADCSRA |= (1 << ADSC);
 	while (((ADCSRA >> ADSC) & 1)){}
+		
+	// Requirement: read ADCL before ADCH
 	int low = ADCL;
-	double value = (ADCH << 8) | low;
-			
-	// Convert to mV using the 5.0V Vcc reference and 10-bit accuracy
-	int mvolts = (int)(value * (5000.0 / 1023.0));
-			
-	// Calculating tenths of degrees C
-	int tmp = mvolts - 500;
-			
-	// Split degrees C from tenths of degrees C
-	int full = tmp / 10;
-	int deci = tmp - (full * 10);
-			
-	// Format and output.
-	char t1[3];
-	char t2[1];
-	itoa(full, t1, 10);
-	itoa(deci, t2, 10);
-	lcd_string("T: ");
-	lcd_string(t1);
-	lcd_string(",");
-	lcd_string(t2);
-	lcd_string("C");	
+	double reading = (ADCH << 8) | low;
+	
+	// Convert the reading to mV
+	// Given a Aref of 5.0V and 10-bit precision.
+	int mvolts = (int)(reading * (5000.0 / 1023.0));
+	
+	// TMP36 has a base of 500mV, resolution of 10mV per degree C.
+	int temperature = (mvolts - 500);
+	
+	return temperature;
+}
+
+void render_temperature() {
+	int temperature = read_temperature();
+    char output[8];
+	
+	// Split the full degrees from the decimal to avoid floats
+	int degrees = (int)(temperature / 10);
+	int decimal = temperature - (degrees * 10);
+	
+	// Format the output
+	sprintf(output, "  %2d,%1dC  ", degrees, decimal);
+	
+	// Output to LCD
+	lcd_setcursor(0, 1);
+	lcd_string(output);
 }
 
 int main(void)
 {
-	// Setup I2C
-	I2CInit();
-
-	// Initialize LCD
-	lcd_init();
-	
-	lcd_clear();
-	lcd_setcursor(0, 0);
-	lcd_string("  Hello");
-	lcd_setcursor(0, 1);
-	lcd_string("world!");
-	
-	// Setup input
-	DDRC = 0x00; // Set as input
-	PORTC = 0b00000110; // Enable pull-up resistors
-	
-	// Setup analog input
-	ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // Set ACD prescalar to 128, 125kHz sample rate at 16Mhz
-	ADMUX |= (1 << REFS0); // Set reference voltage to AVCC (TODO: Get 5V from somewhere else?)
-	ADMUX |= (0 << ADLAR); // Left adjust ADC result to allow easy 8 bit reading
-
-	// No MUX values needed to be changed to use ADC0
-
-	ADCSRA |= (1 << ADEN);  // Enable ADC	
-	
-	lcd_clear();
+	setup();
 	
 	while(1)
     {
