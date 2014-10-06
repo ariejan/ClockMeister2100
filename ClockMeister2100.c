@@ -22,10 +22,40 @@ void setup_i2c() {
 	I2CInit();
 }
 
+void lcd_create_characters() {
+	uint8_t timeChar[8] = {
+		0b01110,
+		0b10101,
+		0b10101,
+		0b10101,
+		0b10111,
+		0b10001,
+		0b10001,
+		0b01110
+	};
+	
+	lcd_generatechar(0x00, timeChar);
+	
+	uint8_t tempChar[8] = {
+		0b00100,
+		0b01010,
+		0b01010,
+		0b01010,
+		0b01110,
+		0b11111,
+		0b11111,
+		0b01110
+	};
+	
+	lcd_generatechar(0x01, tempChar);
+}
+
 // Initialize LCD for use
 void setup_lcd() {
 	// Initialize LCD
 	lcd_init();
+
+	lcd_create_characters();
 
 	lcd_clear();
 	lcd_setcursor(0, 0);
@@ -80,27 +110,44 @@ int dec_to_bcd(int val) {
 int read_from_ds1307(uint8_t address) {
 	uint8_t data;
 	DS1307Read(address, &data);
-	return data;
+	return bcd_to_dec(data);
+}
+
+void write_to_ds1307(uint8_t address, uint8_t value) {
+	DS1307Write(address, dec_to_bcd(value));
 }
 
 int read_hour() {
 	uint8_t data = read_from_ds1307(0x02);
-	return bcd_to_dec(data);
+	return data;
 }
 
 int read_minute() {
 	uint8_t data = read_from_ds1307(0x01);
-	return bcd_to_dec(data);	
+	return data;
+}
+
+void increment_hour() {
+	uint8_t value = read_from_ds1307(0x02);
+	value = (value + 1) % 24;
+	write_to_ds1307(0x02, value);
+}
+
+void increment_minute() {
+	uint8_t value = read_from_ds1307(0x01);
+	value = (value + 1) % 60;
+	write_to_ds1307(0x01, value);
 }
 
 void render_time() {
-	char output[8];
+	char output[7];
 	int hour = read_hour();
 	int minute = read_minute();
 	
-	sprintf(output, " %02d:%02d  ", hour, minute);
+	sprintf(output, " %02d:%02d ", hour, minute);
 	
 	lcd_setcursor(0, 0);
+	lcd_data(0x00);
 	lcd_string(output);
 }
 
@@ -128,17 +175,18 @@ int read_temperature() {
 
 void render_temperature() {
 	int temperature = read_temperature();
-    char output[8];
+    char output[7];
 	
 	// Split the full degrees from the decimal to avoid floats
 	int degrees = (int)(temperature / 10);
 	int decimal = temperature - (degrees * 10);
 	
 	// Format the output
-	sprintf(output, "  %2d,%1dC  ", degrees, decimal);
+	sprintf(output, " %2d,%1dC  ", degrees, decimal);
 	
 	// Output to LCD
 	lcd_setcursor(0, 1);
+	lcd_data(0x01);
 	lcd_string(output);
 }
 
@@ -149,18 +197,14 @@ int main(void)
 	while(1)
     {
 		if ((~PINC & 0x02)) { // Hour set
-			lcd_clear();
-			lcd_setcursor(0, 0);
-			lcd_string(">> HOUR");	
+			increment_hour();
 		} else if ((~PINC & 0x04)) { // Minute set
-			lcd_clear();
-			lcd_setcursor(0, 0);
-			lcd_string(">> MIN");
+			increment_minute();
 		} else {
 			render_time();
 			render_temperature();
 		}
-		_delay_ms(200);
+		_delay_ms(150);
     }
 	
 	return 0;
