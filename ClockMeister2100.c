@@ -147,6 +147,15 @@ void setup_analog() {
 	ADCSRA |= (1 << ADEN);	
 }
 
+void show_version_info() {
+	lcd_clear();
+	lcd_setcursor(0, 0);
+	lcd_string(" CM 2100");
+	lcd_setcursor(0, 1);
+	lcd_string(" v");
+	lcd_string(VERSION);
+}
+
 // Runs once on power-on
 void setup() {
 	setup_i2c();
@@ -155,6 +164,8 @@ void setup() {
 	setup_temperature();
 	setup_lcd();
 	setup_buttons();
+	_delay_ms(SETUP_DELAY_MS);
+	show_version_info();
 	_delay_ms(SETUP_DELAY_MS);
 }
 
