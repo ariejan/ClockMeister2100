@@ -7,4 +7,6 @@
 // Delay after setup has completed in ms
 #define SETUP_DELAY_MS 2500
 
+#define TEMPERATURE_READINGS 500
+
 #endif /* CONFIG_H_ */

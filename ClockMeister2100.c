@@ -6,6 +6,7 @@
  */ 
 
 #include "config.h"
+#include "ClockMeister2100.h"
 
 #include <avr/io.h>
 #include <stdio.h>
@@ -17,9 +18,26 @@
 #include "i2c.h"
 #include "ds1307.h"
 
+int readingIndex = 0;
+int readingSize = TEMPERATURE_READINGS;
+int	tempReadings[TEMPERATURE_READINGS];
+
 // Initialize I2C
 void setup_i2c() {
 	I2CInit();
+}
+
+// Enable the clock on the DS1307
+void setup_rtc() {
+	DS1307Write(0x00, 0x00);
+}
+
+// Populate the temperature reading data
+void setup_temperature() {
+	int reading = read_temperature();
+	for (int i = 0; i < readingSize; i++) {
+		tempReadings[i] = reading;
+	}
 }
 
 void lcd_create_characters() {
@@ -93,9 +111,11 @@ void setup_analog() {
 // Runs once on power-on
 void setup() {
 	setup_i2c();
+	setup_rtc();
+	setup_analog();
+	setup_temperature();
 	setup_lcd();
 	setup_buttons();
-	setup_analog();
 	_delay_ms(SETUP_DELAY_MS);
 }
 
@@ -127,18 +147,6 @@ int read_minute() {
 	return data;
 }
 
-void increment_hour() {
-	uint8_t value = read_from_ds1307(0x02);
-	value = (value + 1) % 24;
-	write_to_ds1307(0x02, value);
-}
-
-void increment_minute() {
-	uint8_t value = read_from_ds1307(0x01);
-	value = (value + 1) % 60;
-	write_to_ds1307(0x01, value);
-}
-
 void render_time() {
 	char output[7];
 	int hour = read_hour();
@@ -149,6 +157,20 @@ void render_time() {
 	lcd_setcursor(0, 0);
 	lcd_data(0x00);
 	lcd_string(output);
+}
+
+void increment_hour() {
+	uint8_t value = read_from_ds1307(0x02);
+	value = (value + 1) % 24;
+	write_to_ds1307(0x02, value);
+	render_time();
+}
+
+void increment_minute() {
+	uint8_t value = read_from_ds1307(0x01);
+	value = (value + 1) % 60;
+	write_to_ds1307(0x01, value);
+	render_time();
 }
 
 // Take a 10-bit analog reading and
@@ -174,7 +196,16 @@ int read_temperature() {
 }
 
 void render_temperature() {
-	int temperature = read_temperature();
+	// Get a reading
+	tempReadings[readingIndex] = read_temperature();
+	readingIndex = (readingIndex + 1) % readingSize;
+	
+	long sum = 0;
+	for (int i = 0; i < readingSize; i++) {
+		sum += tempReadings[i];
+	}
+	int temperature = (int)(sum / readingSize);
+	
     char output[7];
 	
 	// Split the full degrees from the decimal to avoid floats
@@ -196,15 +227,27 @@ int main(void)
 	
 	while(1)
     {
-		if ((~PINC & 0x02)) { // Hour set
-			increment_hour();
-		} else if ((~PINC & 0x04)) { // Minute set
-			increment_minute();
-		} else {
-			render_time();
-			render_temperature();
-		}
-		_delay_ms(150);
+		//if (delta >= 150) {
+			//if ((~PINC & 0x02)) { // Hour set
+				//increment_hour();
+			//} else if ((~PINC & 0x04)) { // Minute set
+				//increment_minute();
+			//} else {
+				//render_time();
+			//}
+			//delta -= 150;
+		//}
+		//
+		//// 500 readings / second
+		//if (delta % 2 == 0) {
+			//render_temperature();
+		//}
+		//
+		//delta += 2;
+		
+		render_time();
+		render_temperature();
+		_delay_ms(2);
     }
 	
 	return 0;

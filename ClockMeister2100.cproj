@@ -111,6 +111,9 @@
     <Compile Include="ClockMeister2100.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="ClockMeister2100.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="config.h">
       <SubType>compile</SubType>
     </Compile>
