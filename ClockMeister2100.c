@@ -9,6 +9,7 @@
 #include "ClockMeister2100.h"
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -21,6 +22,9 @@
 int readingIndex = 0;
 int readingSize = TEMPERATURE_READINGS;
 int	tempReadings[TEMPERATURE_READINGS];
+
+int settingHour = FALSE;
+int settingMinute = TRUE;
 
 // Initialize I2C
 void setup_i2c() {
@@ -84,11 +88,46 @@ void setup_lcd() {
 
 // Setup buttons
 void setup_buttons() {
-	// Set C pint as input.
+	// Set C pins as input.
 	DDRC = 0x00; // Set as input
 	
 	// Enable internal pull-ups on C1 and C2
-	PORTC = 0b00000110;	
+	PORTC = 0b00000110;
+	
+	// Enable interrupts
+	PCICR |= (1 << PCIE0);    // set PCIE0 to enable PCMSK0 scan
+	PCMSK0 |= (1 << PCINT0);  // set PCINT0 to trigger an interrupt on state change
+	
+	sei();
+}
+
+ISR (PCINT0_vect)
+{
+	// Handle Hour button
+    if((PINC & (1 << PINC1)) == 0)
+    {
+		if (settingHour == FALSE) {
+			settingHour = TRUE;
+			increment_hour();
+		}
+    }
+    else
+    {
+		settingHour = FALSE;
+    }
+	
+	// Handle Minute button
+	if((PINC & (1 << PINC2)) == 0)
+	{
+		if (settingMinute == FALSE) {
+			settingMinute = TRUE;
+			increment_minute();
+		}
+	}
+	else
+	{
+		settingMinute = FALSE;
+	}	
 }
 
 // Setup analog input
@@ -163,14 +202,12 @@ void increment_hour() {
 	uint8_t value = read_from_ds1307(0x02);
 	value = (value + 1) % 24;
 	write_to_ds1307(0x02, value);
-	render_time();
 }
 
 void increment_minute() {
 	uint8_t value = read_from_ds1307(0x01);
 	value = (value + 1) % 60;
 	write_to_ds1307(0x01, value);
-	render_time();
 }
 
 // Take a 10-bit analog reading and

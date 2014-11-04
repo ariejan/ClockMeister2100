@@ -25,4 +25,7 @@ int read_hour();
 int read_minute();
 int read_temperature();
 
+void increment_hour();
+void increment_minute();
+
 #endif /* CLOCKMEISTER2100_H_ */
